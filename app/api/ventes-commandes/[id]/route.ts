@@ -1,0 +1,47 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getSessionContext } from '@/lib/session'
+import { canAccess, canReadVentes } from '@/lib/permissions'
+import { toApiErrorMessage } from '@/lib/api-error'
+import { getCommandeClientDetail } from '@/lib/db/queries/ventes'
+import { updateCommandeClient, type CommandeClientLigneInput } from '@/lib/db/mutations/ventes'
+
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const ctx = await getSessionContext()
+  if (!ctx) return NextResponse.json({ error: 'Non authentifié.' }, { status: 401 })
+  if (!canReadVentes(ctx.role)) return NextResponse.json({ error: 'Accès refusé.' }, { status: 403 })
+
+  const { id } = await params
+  const commande = await getCommandeClientDetail(Number(id))
+  if (!commande) return NextResponse.json({ error: 'Commande introuvable.' }, { status: 404 })
+  return NextResponse.json({ commande })
+}
+
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const ctx = await getSessionContext()
+  if (!ctx) return NextResponse.json({ error: 'Non authentifié.' }, { status: 401 })
+  if (!canAccess(ctx.role, 'ventes')) return NextResponse.json({ error: 'Réservé à Ventes.' }, { status: 403 })
+
+  const { id } = await params
+  const body = await request.json().catch(() => ({}))
+  const lignesInput = Array.isArray(body.lignes) ? body.lignes : []
+  const lignes: CommandeClientLigneInput[] = lignesInput.map((ligne: Record<string, unknown>) => ({
+    articleId: Number(ligne.articleId),
+    nomAffiche: String(ligne.nomAffiche ?? ''),
+    quantite: Number(ligne.quantite),
+    prixUnitaire: Number(ligne.prixUnitaire),
+  }))
+
+  try {
+    const commande = await updateCommandeClient(Number(id), {
+      clientId: Number(body.clientId),
+      commercial: typeof body.commercial === 'string' ? body.commercial.trim() || undefined : undefined,
+      dateCommande: typeof body.dateCommande === 'string' && body.dateCommande ? body.dateCommande : new Date().toISOString().slice(0, 10),
+      reference: typeof body.reference === 'string' ? body.reference.trim() || undefined : undefined,
+      commentaire: typeof body.commentaire === 'string' ? body.commentaire.trim() || undefined : undefined,
+      lignes,
+    })
+    return NextResponse.json({ commande })
+  } catch (error) {
+    return NextResponse.json({ error: toApiErrorMessage(error) }, { status: 400 })
+  }
+}

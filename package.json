@@ -1,0 +1,45 @@
+{
+  "name": "barryson-usine",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx lib/db/migrate.ts",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "tsx lib/db/seed.ts",
+    "db:seed-admin": "tsx lib/db/seed-admin.ts",
+    "db:reconcile-stock": "tsx lib/db/reconcile-stock.ts",
+    "audit": "npm audit --audit-level=high",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "better-auth": "^1.7.15",
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.45.2",
+    "lucide-react": "^1.16.0",
+    "next": "16.4.6",
+    "pg": "^8.23.0",
+    "react": "^19",
+    "react-dom": "^19",
+    "tailwind-merge": "^3.3.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^24",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "dotenv": "^17.4.2",
+    "drizzle-kit": "^0.31.10",
+    "postcss": "^8.5",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.12",
+    "typescript": "5.7.3",
+    "vitest": "^3.2.7"
+  }
+}
