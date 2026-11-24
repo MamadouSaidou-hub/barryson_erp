@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: barryson
+          POSTGRES_PASSWORD: barryson_ci_pw
+          POSTGRES_DB: barryson
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://barryson:barryson_ci_pw@localhost:5432/barryson
+      BETTER_AUTH_SECRET: ci-test-secret-not-for-real-use
+      BETTER_AUTH_URL: http://localhost:3000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      # Vérifie du même coup que la migration baseline (lib/db/migrations) construit bien un
+      # schéma complet et fonctionnel sur une base vierge — pas seulement sur la base de dev déjà
+      # en place.
+      - name: Apply migrations
+        run: npm run db:migrate
+
+      - name: Run tests
+        run: npx vitest run --hookTimeout=60000 --testTimeout=60000
+
+      - name: Build
+        run: npm run build
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      # Informationnel pour l'instant : les vulnérabilités connues à ce jour sont uniquement dans
+      # des devDependencies (drizzle-kit → esbuild, vitest → tinypool), pas dans ce qui tourne en
+      # production — ne bloque pas la CI tant qu'elles n'ont pas été corrigées proprement (les
+      # correctifs proposés par `npm audit fix --force` sont des changements cassants à valider
+      # à la main, pas à appliquer en aveugle).
+      - name: npm audit (high+)
+        run: npm run audit
+        continue-on-error: true
