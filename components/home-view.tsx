@@ -27,6 +27,7 @@ type DoctorRewinderDossier = { id: number; fabricationNumero: string; dateEnvoi:
 type CommandeClientRow = { id: number; numero: string; clientName: string; etat: string; solde: number }
 type Creance = { id: number; numero: string; clientName: string; echeance: string | null; solde: number; enRetard: boolean }
 type BesoinFabrication = { articleId: number; articleName: string; unit: string; manque: number }
+type PerformanceClient = { clientId: number; procheDuPlafond: boolean }
 
 const ETAT_ACHAT_LABELS: Record<string, string> = {
   brouillon: 'Brouillon',
@@ -68,6 +69,7 @@ export function HomeView({ userName, access }: { userName: string; access: Acces
   const [commandesClients, setCommandesClients] = useState<CommandeClientRow[] | null>(null)
   const [creances, setCreances] = useState<Creance[] | null>(null)
   const [besoins, setBesoins] = useState<BesoinFabrication[] | null>(null)
+  const [performanceClients, setPerformanceClients] = useState<PerformanceClient[] | null>(null)
 
   useEffect(() => {
     if (access.stock) {
@@ -89,6 +91,7 @@ export function HomeView({ userName, access }: { userName: string; access: Acces
     }
     if (access.ventes) {
       fetchJson<{ commandes: CommandeClientRow[] }>('/api/ventes-commandes').then((res) => setCommandesClients(res.commandes))
+      fetchJson<{ clients: PerformanceClient[] }>('/api/clients/performance').then((res) => setPerformanceClients(res.clients))
     }
     if (access.creances) {
       fetchJson<{ creances: Creance[] }>('/api/creances').then((res) => setCreances(res.creances))
@@ -105,6 +108,7 @@ export function HomeView({ userName, access }: { userName: string; access: Acces
   const commandesClientsEnCours = commandesClients?.filter((c) => c.etat === 'confirmee' || c.etat === 'partiellement_livree') ?? []
   const creancesEnRetard = creances?.filter((c) => c.enRetard) ?? []
   const totalCreances = (creances ?? []).reduce((sum, c) => sum + c.solde, 0)
+  const clientsProchesDuPlafond = performanceClients?.filter((c) => c.procheDuPlafond) ?? []
 
   const taches = [
     stock && stockAlerts.length > 0 && { label: `${stockAlerts.length} article(s) de stock à surveiller`, href: '/stock' },
@@ -112,6 +116,7 @@ export function HomeView({ userName, access }: { userName: string; access: Acces
     drDossiers && drDossiersAnciens.length > 0 && { label: `${drDossiersAnciens.length} dossier(s) Doctor Rewinder ouverts depuis plus de ${DOCTOR_REWINDER_ALERTE_JOURS} jours`, href: '/doctor-rewinder' },
     besoins && besoins.length > 0 && { label: `${besoins.length} produit(s) en rupture face à la demande client — fabrication à prévoir`, href: '/production' },
     creances && creancesEnRetard.length > 0 && { label: `${creancesEnRetard.length} créance(s) client en retard`, href: '/creances' },
+    performanceClients && clientsProchesDuPlafond.length > 0 && { label: `${clientsProchesDuPlafond.length} client(s) proche(s) de leur plafond d'encours`, href: '/ventes/clients' },
   ].filter(Boolean) as { label: string; href: string }[]
 
   const aucunModule = !access.stock && !access.commander && !access.recevoir && !access.production && !access.doctorRewinder && !access.ventes && !access.creances

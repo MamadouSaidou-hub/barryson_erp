@@ -42,6 +42,7 @@ const navItems = [
   { href: '/doctor-rewinder', label: 'Doctor Rewinder', icon: Sparkles, moduleKey: 'doctor_rewinder' as string | null },
   { href: '/devis', label: 'Devis', icon: FileText, moduleKey: 'ventes' as string | null },
   { href: '/ventes', label: 'Ventes', icon: ShoppingCart, moduleKey: 'ventes_read' as string | null },
+  { href: '/ventes/clients', label: 'Clients', icon: Users, moduleKey: 'ventes' as string | null },
   { href: '/creances', label: 'Créances', icon: Wallet, moduleKey: 'ventes_read' as string | null },
   { href: '/tresorerie', label: 'Trésorerie', icon: Wallet, moduleKey: 'tresorerie' as string | null },
   { href: '/cockpit-dg', label: 'Cockpit DG', icon: Gauge, moduleKey: 'cockpit_dg' as string | null },

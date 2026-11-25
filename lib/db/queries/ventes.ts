@@ -3,6 +3,7 @@ import { db } from '../client'
 import { articles, clients, commandesClients, commandesClientsLignes, livraisonsClientsLignes, paiementsClients } from '../schema'
 import { calculerEncoursClient } from '../mutations/ventes'
 import { getDernieresRelancesParCommande } from '../mutations/relances-clients'
+import { getClientsList } from './clients'
 
 function addDaysToDateString(date: string, days: number): string {
   const d = new Date(`${date}T00:00:00Z`)
@@ -19,6 +20,11 @@ function joursEntre(date: string, today: string): number {
 // automatiquement ici ; le commercial contacte le client lui-même puis enregistre la relance
 // faite (`enregistrerRelanceClient`). Même esprit que `DOCTOR_REWINDER_ALERTE_JOURS`.
 const NIVEAU_RELANCE_SEUILS = [15, 30] as const
+
+// Seuil d'alerte proactive (§ directeur commercial) : un client atteignant ce pourcentage de son
+// plafond d'encours est "à surveiller" avant le blocage sec à 100 % déjà appliqué par
+// `confirmerCommandeClient` (lib/db/mutations/ventes.ts).
+const PLAFOND_ALERTE_SEUIL = 0.8
 
 function niveauRelanceSuggere(joursRetard: number): 1 | 2 | 3 {
   if (joursRetard < NIVEAU_RELANCE_SEUILS[0]) return 1
@@ -93,6 +99,52 @@ export async function getTresorerieVentes() {
   const totalACaisser = retenues.filter((row) => row.solde > 0).reduce((sum, row) => sum + row.solde, 0)
 
   return { totalEncaisse, totalACaisser }
+}
+
+// Performance + encours par client (§ directeur commercial) : CA cumulé, panier moyen, dernière
+// commande, et pourcentage du plafond d'encours déjà engagé — pour prioriser les relances
+// commerciales, par opposition aux Créances/Relances qui ne regardent que les retards de
+// paiement. `encours` reprend exactement la définition de `calculerEncoursClient`
+// (lib/db/mutations/ventes.ts) — somme des soldes des commandes engagées (confirmee,
+// partiellement_livree, livree) — mais en regroupant les lignes déjà calculées par
+// getCommandesClientsList() plutôt qu'en rappelant cette fonction par client (évite un N+1).
+export async function getPerformanceClients() {
+  const [commandes, clientsRows] = await Promise.all([getCommandesClientsList(), getClientsList()])
+
+  const parClient = new Map<number, typeof commandes>()
+  for (const commande of commandes) {
+    const liste = parClient.get(commande.clientId) ?? []
+    liste.push(commande)
+    parClient.set(commande.clientId, liste)
+  }
+
+  const performances = clientsRows.map((client) => {
+    const commandesClient = parClient.get(client.id) ?? []
+    const retenues = commandesClient.filter((c) => c.etat !== 'brouillon' && c.etat !== 'annulee')
+    const caCumule = retenues.reduce((sum, c) => sum + c.total, 0)
+    const nombreCommandes = retenues.length
+    const panierMoyen = nombreCommandes > 0 ? caCumule / nombreCommandes : 0
+    const derniereCommande = retenues.reduce<string | null>((max, c) => (max === null || c.dateCommande > max ? c.dateCommande : max), null)
+
+    const engagees = commandesClient.filter((c) => c.etat === 'confirmee' || c.etat === 'partiellement_livree' || c.etat === 'livree')
+    const encours = engagees.reduce((sum, c) => sum + c.solde, 0)
+    const pctPlafond = client.plafondEncours ? encours / client.plafondEncours : null
+
+    return {
+      clientId: client.id,
+      clientName: client.name,
+      caCumule,
+      nombreCommandes,
+      panierMoyen,
+      derniereCommande,
+      encours,
+      plafondEncours: client.plafondEncours,
+      pctPlafond,
+      procheDuPlafond: pctPlafond !== null && pctPlafond >= PLAFOND_ALERTE_SEUIL,
+    }
+  })
+
+  return performances.sort((a, b) => b.caCumule - a.caCumule)
 }
 
 export async function getCommandeClientDetail(id: number) {
