@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
+  Banknote,
   ClipboardList,
   Download,
   FileText,
@@ -25,7 +26,7 @@ import {
 } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { companyInfo } from '@/lib/company-info'
-import { canAccess, canReadAchats, canReadVentes, ROLE_LABELS, type Role } from '@/lib/permissions'
+import { canAccess, canReadAchats, canReadVentes, hasSalaryAccess, ROLE_LABELS, type Role } from '@/lib/permissions'
 
 // Menu court du cahier des charges (§4) : Accueil · Commander · Recevoir · Stock · Production ·
 // Doctor Rewinder (si droit), puis Réglages. Ventes/Créances (§10) viennent après le noyau
@@ -47,6 +48,7 @@ const navItems = [
   { href: '/tresorerie', label: 'Trésorerie', icon: Wallet, moduleKey: 'tresorerie' as string | null },
   { href: '/cockpit-dg', label: 'Cockpit DG', icon: Gauge, moduleKey: 'cockpit_dg' as string | null },
   { href: '/rh', label: 'Employés', icon: UserRound, moduleKey: 'rh' as string | null },
+  { href: '/rh/salaires', label: 'Salaires', icon: Banknote, moduleKey: 'salaires' as string | null },
 ]
 
 const reglagesItems = [
@@ -144,6 +146,7 @@ export function AppShell({
     if (moduleKey === null) return true
     if (moduleKey === 'ventes_read') return canReadVentes(role)
     if (moduleKey === 'commander_read') return canReadAchats(role)
+    if (moduleKey === 'salaires') return hasSalaryAccess(role)
     return canAccess(role, moduleKey as Parameters<typeof canAccess>[1])
   }
 

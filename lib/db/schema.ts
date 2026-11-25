@@ -727,3 +727,49 @@ export const employes = pgTable('employes', {
   active: boolean('active').notNull().default(true),
   ...timestamps,
 })
+
+// Salaires (§3 : confidentiel à rh/dg, même admin en est exclu — cf. `hasSalaryAccess` dans
+// lib/permissions.ts) : volontairement DEUX tables séparées de `employes` plutôt que des
+// colonnes sur `employes` lui-même, pour que `getEmployesList()`/`/api/employes` (accessibles à
+// `admin` via MODULE_ACCESS.rh) ne puissent structurellement jamais renvoyer de donnée salariale,
+// même par erreur future dans ce fichier — seules les requêtes de lib/db/queries/salaires.ts y
+// touchent, et elles ne sont importées que par des routes gardées par `hasSalaryAccess`.
+export const salairesEmployes = pgTable(
+  'salaires_employes',
+  {
+    id: serial('id').primaryKey(),
+    employeId: integer('employe_id')
+      .notNull()
+      .unique()
+      .references(() => employes.id, { onDelete: 'restrict' }),
+    salaireBase: gnf('salaire_base').notNull(),
+    ...timestamps,
+  },
+  (table) => [check('salaires_employes_montant_check', sql`${table.salaireBase} > 0`)],
+)
+
+export const paiementsSalaires = pgTable(
+  'paiements_salaires',
+  {
+    id: serial('id').primaryKey(),
+    employeId: integer('employe_id')
+      .notNull()
+      .references(() => employes.id, { onDelete: 'restrict' }),
+    montant: gnf('montant').notNull(),
+    // "AAAA-MM" : le mois concerné par le paiement (peut différer de `date`, qui est le jour où
+    // le paiement a réellement été effectué).
+    periode: text('periode').notNull(),
+    methode: text('methode').notNull(),
+    date: text('date').notNull(),
+    ...timestamps,
+  },
+  (table) => [index('paiements_salaires_employe_idx').on(table.employeId), check('paiements_salaires_montant_check', sql`${table.montant} > 0`)],
+)
+
+export const salairesEmployesRelations = relations(salairesEmployes, ({ one }) => ({
+  employe: one(employes, { fields: [salairesEmployes.employeId], references: [employes.id] }),
+}))
+
+export const paiementsSalairesRelations = relations(paiementsSalaires, ({ one }) => ({
+  employe: one(employes, { fields: [paiementsSalaires.employeId], references: [employes.id] }),
+}))
