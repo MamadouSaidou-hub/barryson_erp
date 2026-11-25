@@ -684,3 +684,21 @@ export const tarifsClientsRelations = relations(tarifsClients, ({ one }) => ({
   client: one(clients, { fields: [tarifsClients.clientId], references: [clients.id] }),
   article: one(articles, { fields: [tarifsClients.articleId], references: [articles.id] }),
 }))
+
+// ---------------------------------------------------------------------------
+// RH (§9) : fiche employé — V1 volontairement limitée à l'identification/au poste, sans salaires
+// ni pointage ni congés (hors périmètre de cette itération). Jamais de suppression, comme partout
+// ailleurs : un employé qui part est désactivé, pas effacé (il peut rester référencé plus tard).
+// ---------------------------------------------------------------------------
+
+export const employes = pgTable('employes', {
+  id: serial('id').primaryKey(),
+  code: text('code').notNull().unique(),
+  name: text('name').notNull(),
+  poste: text('poste').notNull(),
+  phone: text('phone'),
+  email: text('email'),
+  dateEmbauche: text('date_embauche'),
+  active: boolean('active').notNull().default(true),
+  ...timestamps,
+})

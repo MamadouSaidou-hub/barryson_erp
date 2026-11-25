@@ -17,6 +17,7 @@ import {
   ShoppingCart,
   Sparkles,
   Truck,
+  UserRound,
   Users,
   Wallet,
   Wrench,
@@ -41,6 +42,7 @@ const navItems = [
   { href: '/ventes', label: 'Ventes', icon: ShoppingCart, moduleKey: 'ventes' as string | null },
   { href: '/creances', label: 'Créances', icon: Wallet, moduleKey: 'ventes_read' as string | null },
   { href: '/cockpit-dg', label: 'Cockpit DG', icon: Gauge, moduleKey: 'cockpit_dg' as string | null },
+  { href: '/rh', label: 'Employés', icon: UserRound, moduleKey: 'rh' as string | null },
 ]
 
 const reglagesItems = [

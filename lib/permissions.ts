@@ -24,6 +24,7 @@ export const MODULE_ACCESS: Record<string, Role[]> = {
   doctor_rewinder: ['chef_prod', 'dg', 'admin'],
   ventes: ['dir_commercial', 'dg', 'admin'],
   cockpit_dg: ['dg', 'admin'],
+  rh: ['rh', 'dg', 'admin'],
 }
 
 export function canAccess(role: string, moduleKey: keyof typeof MODULE_ACCESS): boolean {

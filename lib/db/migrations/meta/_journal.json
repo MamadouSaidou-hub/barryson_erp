@@ -8,6 +8,13 @@
       "when": 1795550400482,
       "tag": "0000_salty_angel",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795570833746,
+      "tag": "0001_shiny_skrulls",
+      "breakpoints": true
     }
   ]
 }
