@@ -1,9 +1,13 @@
 @import 'tailwindcss';
 
 :root {
-  --background: #f7f9fc; --foreground: #10213a; --card: #ffffff; --border: #e3e9f1; --muted: #6f7d90; --primary: #0b2e5c;
+  --background: #f7f9fc; --foreground: #15171a; --card: #ffffff; --border: #e3e9f1; --muted: #6f7d90; --primary: #5b8134;
+  /* Vert exact du logo (cercle "BS") — réservé aux zones décoratives sans texte dessus : à
+     #8cc750 le contraste avec du texte blanc n'est que de 2:1 (sous le minimum AA de 4.5:1), donc
+     jamais utilisé comme fond de bouton. --primary est ce même vert assombri à 65% (ratio 4.53:1). */
+  --brand-accent: #8cc750;
   --green: #2e9e3f; --orange: #f0a020; --blue: #3b82c4; --red: #d1453d;
-  --ink: #142743; --text: #384656; --faint: #8a99aa; --surface-alt: #f4f7fa; --surface-hover: #fafbfd; --divider: #f0f3f6;
+  --ink: #17191c; --text: #384656; --faint: #8a99aa; --surface-alt: #f4f7fa; --surface-hover: #fafbfd; --divider: #f0f3f6;
   --tint-primary: color-mix(in srgb, var(--primary) 12%, var(--card));
   --tint-green: color-mix(in srgb, var(--green) 15%, var(--card));
   --tint-orange: color-mix(in srgb, var(--orange) 20%, var(--card));
@@ -12,13 +16,13 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --background: #0d1420; --foreground: #e4e9f2; --card: #141c2b; --border: #29354a; --muted: #93a2b8;
+    --background: #0d1420; --foreground: #e4e9f2; --card: #141c2b; --border: #29354a; --muted: #93a2b8; --primary: #7cb84a;
     --green: #3ecf58; --orange: #ffb648; --blue: #63a8e8; --red: #ff6b66;
     --ink: #eef2f8; --text: #c3ccdb; --faint: #8291a6; --surface-alt: #1a2334; --surface-hover: #182234; --divider: #202b3d;
   }
 }
 :root[data-theme="dark"] {
-  --background: #0d1420; --foreground: #e4e9f2; --card: #141c2b; --border: #29354a; --muted: #93a2b8;
+  --background: #0d1420; --foreground: #e4e9f2; --card: #141c2b; --border: #29354a; --muted: #93a2b8; --primary: #7cb84a;
   --green: #3ecf58; --orange: #ffb648; --blue: #63a8e8; --red: #ff6b66;
   --ink: #eef2f8; --text: #c3ccdb; --faint: #8291a6; --surface-alt: #1a2334; --surface-hover: #182234; --divider: #202b3d;
 }
@@ -32,7 +36,11 @@ button, a, select { -webkit-tap-highlight-color: transparent; }
 .app-frame { min-height: 100vh; display: flex; }
 .sidebar { width: 240px; min-height: 100vh; background: var(--card); border-right: 1px solid var(--border); padding: 28px 16px 18px; display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
 .brand-lockup { display: flex; align-items: center; gap: 10px; padding: 0 12px 28px; }
-.brand-mark { width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0; background: var(--primary); color: white; display: grid; place-items: center; font-weight: 700; font-size: 13px; }
+/* Chip blanc autour du logo : le fichier fourni a un fond blanc plein (pas de transparence), donc
+   on le présente volontairement "sur une carte" plutôt que de laisser un carré blanc parasite
+   apparaître en thème sombre. */
+.brand-mark { width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0; background: #ffffff; display: grid; place-items: center; padding: 3px; overflow: hidden; }
+.brand-mark img { width: 100%; height: 100%; object-fit: contain; border-radius: 6px; }
 .brand-lockup strong { display: block; font-size: 18px; letter-spacing: -.5px; color: var(--ink); }
 .brand-lockup span { display: block; color: var(--muted); font-size: 9px; margin-top: 2px; white-space: nowrap; }
 .mobile-close { display: none; }
@@ -116,10 +124,10 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 11px; }
 .filter-chip-row { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
 .filter-chip { border: 1px solid var(--border); background: var(--card); color: var(--muted); font-size: 11px; font-weight: 700; padding: 7px 14px; border-radius: 16px; cursor: pointer; min-height: 32px; }
 .filter-chip.active { background: var(--tint-primary); border-color: var(--primary); color: var(--primary); }
-.btn-primary { height: 35px; border: 0; border-radius: 6px; background: var(--primary); color: white; display: inline-flex; align-items: center; gap: 8px; padding: 0 14px; font-size: 11px; font-weight: 700; cursor: pointer; }
+.btn-primary { height: 40px; border: 0; border-radius: 6px; background: var(--primary); color: white; display: inline-flex; align-items: center; gap: 8px; padding: 0 14px; font-size: 11px; font-weight: 700; cursor: pointer; }
 .btn-primary:disabled { opacity: .55; cursor: not-allowed; }
-.btn-secondary { height: 35px; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); background: var(--card); display: inline-flex; align-items: center; gap: 8px; padding: 0 14px; font-size: 11px; font-weight: 700; cursor: pointer; }
-.btn-ghost { border: 0; background: transparent; color: var(--primary); font-size: 10px; font-weight: 700; cursor: pointer; padding: 4px 8px; }
+.btn-secondary { height: 40px; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); background: var(--card); display: inline-flex; align-items: center; gap: 8px; padding: 0 14px; font-size: 11px; font-weight: 700; cursor: pointer; }
+.btn-ghost { border: 0; background: transparent; color: var(--primary); font-size: 10px; font-weight: 700; cursor: pointer; padding: 4px 8px; min-height: 36px; display: inline-flex; align-items: center; }
 .toolbar-spacer { flex: 1; }
 @keyframes modal-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes modal-pop-in { from { opacity: 0; transform: scale(.97) translateY(6px); } to { opacity: 1; transform: none; } }

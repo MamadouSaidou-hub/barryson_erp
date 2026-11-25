@@ -154,7 +154,7 @@ export function AppShell({
     <div className="app-frame">
       <aside className={`sidebar ${menuOpen ? 'sidebar-open' : ''}`}>
         <div className="brand-lockup">
-          <div className="brand-mark">{companyInfo.shortName.slice(0, 2).toUpperCase()}</div>
+          <div className="brand-mark"><img src="/brand/logo-barryson.jpg" alt={companyInfo.displayName} /></div>
           <div><strong>{companyInfo.shortName}</strong><span>{companyInfo.tagline}</span></div>
           <button className="mobile-close" onClick={() => setMenuOpen(false)} aria-label="Fermer le menu"><X /></button>
         </div>

@@ -33,7 +33,7 @@ export default function LoginPage() {
     <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: 'var(--background)' }}>
       <div className="modal-panel" style={{ width: '100%', maxWidth: 360 }}>
         <div className="brand-lockup" style={{ paddingBottom: 18 }}>
-          <div className="brand-mark">{companyInfo.shortName.slice(0, 2).toUpperCase()}</div>
+          <div className="brand-mark"><img src="/brand/logo-barryson.jpg" alt={companyInfo.displayName} /></div>
           <div>
             <strong>{companyInfo.shortName}</strong>
             <span>{companyInfo.tagline}</span>
