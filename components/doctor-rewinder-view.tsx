@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Clock, Percent, Sparkles } from 'lucide-react'
+import { Clock, Percent, Stethoscope } from 'lucide-react'
 import { AppShell } from '@/components/app-shell'
 import { Modal } from '@/components/modal'
 import { fetchJson } from '@/lib/fetch-json'
@@ -20,7 +20,7 @@ type Dossier = {
 
 type Indicateurs = { encoursCount: number; tauxRecuperation: number | null; ancienneteMoyenneJours: number | null }
 
-function MetricCard({ label, value, icon: Icon, tone }: { label: string; value: string; icon: typeof Sparkles; tone: 'navy' | 'green' | 'orange' | 'blue' }) {
+function MetricCard({ label, value, icon: Icon, tone }: { label: string; value: string; icon: typeof Stethoscope; tone: 'navy' | 'green' | 'orange' | 'blue' }) {
   return (
     <article className="metric-card">
       <div className="metric-topline"><span className={`metric-icon metric-icon-${tone}`}><Icon aria-hidden="true" /></span></div>
@@ -109,7 +109,7 @@ export function DoctorRewinderView() {
       </div>
 
       <div className="metrics-grid">
-        <MetricCard label="En cours" value={`${indicateurs?.encoursCount ?? 0}`} icon={Sparkles} tone="blue" />
+        <MetricCard label="En cours" value={`${indicateurs?.encoursCount ?? 0}`} icon={Stethoscope} tone="blue" />
         <MetricCard
           label="Taux de récupération"
           value={indicateurs?.tauxRecuperation !== null && indicateurs?.tauxRecuperation !== undefined ? `${(indicateurs.tauxRecuperation * 100).toFixed(0)} %` : '—'}

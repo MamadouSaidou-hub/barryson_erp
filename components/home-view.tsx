@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, ClipboardList, PackageCheck, PackagePlus, ShoppingCart, Sparkles, TriangleAlert, Wallet, Wrench } from 'lucide-react'
+import { AlertTriangle, ClipboardList, PackageCheck, PackagePlus, ShoppingCart, Stethoscope, TriangleAlert, Wallet, Wrench } from 'lucide-react'
 import { AppShell } from '@/components/app-shell'
 import { fetchJson } from '@/lib/fetch-json'
 import { formatMoney, formatQuantity } from '@/lib/format'
@@ -161,7 +161,7 @@ export function HomeView({ userName, access }: { userName: string; access: Acces
         )}
         {access.doctorRewinder && (
           <Link href="/doctor-rewinder" className="metric-card" style={{ textDecoration: 'none', display: 'block' }}>
-            <div className="metric-topline"><div className="metric-icon metric-icon-orange"><Sparkles size={15} /></div></div>
+            <div className="metric-topline"><div className="metric-icon metric-icon-orange"><Stethoscope size={15} /></div></div>
             <p className="metric-label">Doctor Rewinder — récupération</p>
             <p className="metric-value">{drIndicateurs?.tauxRecuperation !== null && drIndicateurs?.tauxRecuperation !== undefined ? `${(drIndicateurs.tauxRecuperation * 100).toFixed(0)} %` : '—'}</p>
             {drIndicateurs && <p className="metric-helper">{drIndicateurs.encoursCount} en cours</p>}

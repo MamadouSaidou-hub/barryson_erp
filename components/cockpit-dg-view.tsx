@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ClipboardList, Percent, ShoppingCart, Sparkles, TriangleAlert, Wallet, Wrench } from 'lucide-react'
+import { ClipboardList, Percent, ShoppingCart, Stethoscope, TriangleAlert, Wallet, Wrench } from 'lucide-react'
 import { AppShell } from '@/components/app-shell'
 import { fetchJson } from '@/lib/fetch-json'
 import { formatMoney } from '@/lib/format'
@@ -65,7 +65,7 @@ export function CockpitDGView() {
               ? '—'
               : `${(summary.doctorRewinderIndicateurs.tauxRecuperation * 100).toFixed(0)} %`
           }
-          icon={Sparkles}
+          icon={Stethoscope}
           tone="orange"
           helper={summary ? `${summary.doctorRewinderIndicateurs.encoursCount} en cours` : undefined}
         />
