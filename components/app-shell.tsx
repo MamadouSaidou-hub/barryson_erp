@@ -25,22 +25,25 @@ import {
 } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 import { companyInfo } from '@/lib/company-info'
-import { canAccess, canReadVentes, ROLE_LABELS, type Role } from '@/lib/permissions'
+import { canAccess, canReadAchats, canReadVentes, ROLE_LABELS, type Role } from '@/lib/permissions'
 
 // Menu court du cahier des charges (§4) : Accueil · Commander · Recevoir · Stock · Production ·
 // Doctor Rewinder (si droit), puis Réglages. Ventes/Créances (§10) viennent après le noyau
-// usine. `moduleKey: 'ventes_read'` est un cas spécial géré par `visible()` ci-dessous : le
-// comptable voit Créances en lecture seule sans avoir le reste de l'accès `ventes`.
+// usine. `moduleKey: 'ventes_read'`/`'commander_read'` sont des cas spéciaux gérés par
+// `visible()` ci-dessous : le comptable voit Ventes/Commander/Créances en lecture seule sans
+// avoir le reste de l'accès `ventes`/`commander` (les boutons de mutation sont eux-mêmes masqués
+// dans chaque vue, cf. `VentesView`/`CommanderView`/`CreancesView`).
 const navItems = [
   { href: '/', label: 'Accueil', icon: LayoutDashboard, moduleKey: null as string | null },
-  { href: '/commander', label: 'Commander', icon: ClipboardList, moduleKey: 'commander' as string | null },
+  { href: '/commander', label: 'Commander', icon: ClipboardList, moduleKey: 'commander_read' as string | null },
   { href: '/recevoir', label: 'Recevoir', icon: PackageCheck, moduleKey: 'recevoir' as string | null },
   { href: '/stock', label: 'Stock', icon: Package, moduleKey: 'stock' as string | null },
   { href: '/production', label: 'Production', icon: Wrench, moduleKey: 'production' as string | null },
   { href: '/doctor-rewinder', label: 'Doctor Rewinder', icon: Sparkles, moduleKey: 'doctor_rewinder' as string | null },
   { href: '/devis', label: 'Devis', icon: FileText, moduleKey: 'ventes' as string | null },
-  { href: '/ventes', label: 'Ventes', icon: ShoppingCart, moduleKey: 'ventes' as string | null },
+  { href: '/ventes', label: 'Ventes', icon: ShoppingCart, moduleKey: 'ventes_read' as string | null },
   { href: '/creances', label: 'Créances', icon: Wallet, moduleKey: 'ventes_read' as string | null },
+  { href: '/tresorerie', label: 'Trésorerie', icon: Wallet, moduleKey: 'tresorerie' as string | null },
   { href: '/cockpit-dg', label: 'Cockpit DG', icon: Gauge, moduleKey: 'cockpit_dg' as string | null },
   { href: '/rh', label: 'Employés', icon: UserRound, moduleKey: 'rh' as string | null },
 ]
@@ -139,6 +142,7 @@ export function AppShell({
   function visible(moduleKey: string | null) {
     if (moduleKey === null) return true
     if (moduleKey === 'ventes_read') return canReadVentes(role)
+    if (moduleKey === 'commander_read') return canReadAchats(role)
     return canAccess(role, moduleKey as Parameters<typeof canAccess>[1])
   }
 

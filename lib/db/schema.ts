@@ -476,6 +476,26 @@ export const paiementsClients = pgTable(
   (table) => [index('paiements_clients_commande_idx').on(table.commandeClientId), check('paiements_clients_montant_check', sql`${table.montant} > 0`)],
 )
 
+// Symétrique de paiementsClients côté achats, mais en doublePrecision (pas gnf()/bigint) : un
+// paiement fournisseur est dans la devise de la commande (USD/EUR/CNY), jamais convertie en un
+// solde GNF exact — même principe que `commandeLignes.prixUnitaire` (cf. commentaire sur `gnf`
+// en tête de fichier : ces devises restent des estimations indicatives, jamais sommées avec les
+// montants GNF des ventes).
+export const paiementsFournisseurs = pgTable(
+  'paiements_fournisseurs',
+  {
+    id: serial('id').primaryKey(),
+    commandeId: integer('commande_id')
+      .notNull()
+      .references(() => commandes.id, { onDelete: 'restrict' }),
+    montant: doublePrecision('montant').notNull(),
+    methode: text('methode').notNull(),
+    date: text('date').notNull(),
+    ...timestamps,
+  },
+  (table) => [index('paiements_fournisseurs_commande_idx').on(table.commandeId), check('paiements_fournisseurs_montant_check', sql`${table.montant} > 0`)],
+)
+
 // Un seul prix courant par (client, article) — pas d'historique de versions (même esprit que
 // `modelesRuban` : "simplement modifiable"). Sert uniquement à préremplir le prix d'une nouvelle
 // commande ; le prix reste toujours modifiable à la main.
@@ -615,6 +635,11 @@ export const commandesRelations = relations(commandes, ({ one, many }) => ({
   fournisseur: one(fournisseurs, { fields: [commandes.fournisseurId], references: [fournisseurs.id] }),
   lignes: many(commandeLignes),
   receptions: many(receptions),
+  paiements: many(paiementsFournisseurs),
+}))
+
+export const paiementsFournisseursRelations = relations(paiementsFournisseurs, ({ one }) => ({
+  commande: one(commandes, { fields: [paiementsFournisseurs.commandeId], references: [commandes.id] }),
 }))
 
 export const commandeLignesRelations = relations(commandeLignes, ({ one, many }) => ({

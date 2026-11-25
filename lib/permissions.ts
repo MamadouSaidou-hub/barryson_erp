@@ -25,6 +25,7 @@ export const MODULE_ACCESS: Record<string, Role[]> = {
   ventes: ['dir_commercial', 'dg', 'admin'],
   cockpit_dg: ['dg', 'admin'],
   rh: ['rh', 'dg', 'admin'],
+  tresorerie: ['comptable', 'dg', 'admin'],
 }
 
 export function canAccess(role: string, moduleKey: keyof typeof MODULE_ACCESS): boolean {
@@ -36,6 +37,12 @@ export function canAccess(role: string, moduleKey: keyof typeof MODULE_ACCESS): 
 // de mutation qui restent `canAccess(role, 'ventes')`.
 export function canReadVentes(role: string): boolean {
   return canAccess(role, 'ventes') || role === 'comptable'
+}
+
+// Symétrique de canReadVentes côté achats : le comptable lit les commandes fournisseurs et leurs
+// paiements, mais ne les saisit jamais (cf. commentaire ci-dessus).
+export function canReadAchats(role: string): boolean {
+  return canAccess(role, 'commander') || role === 'comptable'
 }
 
 // Salary/HR data is confidential to RH + DG even from the admin (§3: "Administrateur — sans

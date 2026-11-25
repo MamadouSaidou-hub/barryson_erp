@@ -6,6 +6,7 @@ import { AppShell } from '@/components/app-shell'
 import { Modal } from '@/components/modal'
 import { fetchJson } from '@/lib/fetch-json'
 import { formatMoney } from '@/lib/format'
+import { authClient } from '@/lib/auth-client'
 
 type CommandeRow = {
   id: number
@@ -16,6 +17,8 @@ type CommandeRow = {
   etat: string
   dateArriveePrevue: string | null
   total: number
+  totalPaye: number
+  solde: number
 }
 
 type CatalogueOption = {
@@ -408,6 +411,58 @@ type CommandeDetail = {
   lignes: { articleId: number; catalogueProduitId: number | null; articleUnit: string; nomAffiche: string; description: string | null; quantite: number; prixUnitaire: number | null; finish: string | null }[]
 }
 
+function PayerFournisseurForm({ commandeId, solde, devise, onDone }: { commandeId: number; solde: number; devise: string; onDone: () => void }) {
+  const [montant, setMontant] = useState(solde > 0 ? String(solde) : '')
+  const [methode, setMethode] = useState('Virement')
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault()
+    setError('')
+    setSubmitting(true)
+    try {
+      const res = await fetch(`/api/commandes/${commandeId}/paiements`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ montant, methode, date }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setError(json.error ?? 'Une erreur est survenue.')
+        return
+      }
+      onDone()
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      {error && <p className="form-error">{error}</p>}
+      <p className="section-subtitle">Solde restant dû : {formatMoney(solde, devise)}</p>
+      <div className="form-row">
+        <div className="form-field"><label>Montant ({devise})</label><input required type="number" value={montant} onChange={(event) => setMontant(event.target.value)} /></div>
+        <div className="form-field">
+          <label>Mode de règlement</label>
+          <select value={methode} onChange={(event) => setMethode(event.target.value)}>
+            <option value="Virement">Virement</option>
+            <option value="Espèces">Espèces</option>
+            <option value="Mobile money">Mobile money</option>
+            <option value="Chèque">Chèque</option>
+          </select>
+        </div>
+      </div>
+      <div className="form-field"><label>Date</label><input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></div>
+      <div className="form-actions">
+        <button type="submit" className="btn-primary" disabled={submitting}>{submitting ? 'Enregistrement...' : 'Payer'}</button>
+      </div>
+    </form>
+  )
+}
+
 function EditCommandeModal({ commandeId, onClose, onDone }: { commandeId: number; onClose: () => void; onDone: () => void }) {
   const [detail, setDetail] = useState<CommandeDetail | null>(null)
 
@@ -450,11 +505,16 @@ function EditCommandeModal({ commandeId, onClose, onDone }: { commandeId: number
 }
 
 export function CommanderView() {
+  const { data: session } = authClient.useSession()
+  const role = (session?.user as { role?: string })?.role
+  const readOnly = role === 'comptable'
+
   const [commandes, setCommandes] = useState<CommandeRow[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
   const [newOpen, setNewOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [payerFor, setPayerFor] = useState<CommandeRow | null>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -466,6 +526,7 @@ export function CommanderView() {
   function refresh() {
     setNewOpen(false)
     setEditingId(null)
+    setPayerFor(null)
     setRefreshKey((value) => value + 1)
   }
 
@@ -494,17 +555,19 @@ export function CommanderView() {
           <p className="heading-subtitle">Préparez une commande pour un fournisseur.</p>
         </div>
       </div>
-      <div className="toolbar-panel" style={{ justifyContent: 'flex-end' }}>
-        <button className="btn-primary" onClick={() => setNewOpen(true)}><Plus size={14} /> Nouvelle commande</button>
-      </div>
+      {!readOnly && (
+        <div className="toolbar-panel" style={{ justifyContent: 'flex-end' }}>
+          <button className="btn-primary" onClick={() => setNewOpen(true)}><Plus size={14} /> Nouvelle commande</button>
+        </div>
+      )}
       <div className="table-panel">
         <div className="table-scroll">
           <table className="data-table">
             <thead>
-              <tr><th>Numéro</th><th>Fournisseur</th><th>Total</th><th>Arrivée prévue</th><th>État</th><th></th></tr>
+              <tr><th>Numéro</th><th>Fournisseur</th><th>Total</th><th>Solde dû</th><th>Arrivée prévue</th><th>État</th><th></th></tr>
             </thead>
             <tbody>
-              {!loading && commandes.length === 0 && <tr><td colSpan={6} className="table-empty">Aucune commande.</td></tr>}
+              {!loading && commandes.length === 0 && <tr><td colSpan={7} className="table-empty">Aucune commande.</td></tr>}
               {commandes.map((commande) => (
                 <tr key={commande.id}>
                   <td>{commande.numero}</td>
@@ -513,15 +576,19 @@ export function CommanderView() {
                     {formatMoney(commande.total, commande.devise)}
                     {commande.tauxChange && <div style={{ fontSize: 10, color: 'var(--faint)' }}>≈ {formatMoney(commande.total * commande.tauxChange, 'GNF')}</div>}
                   </td>
+                  <td>{formatMoney(commande.solde, commande.devise)}</td>
                   <td>{commande.dateArriveePrevue ?? '—'}</td>
                   <td><span className={`badge ${ETAT_BADGES[commande.etat]}`}>{ETAT_LABELS[commande.etat]}</span></td>
                   <td>
-                    {commande.etat === 'brouillon' && (
+                    {!readOnly && commande.etat === 'brouillon' && (
                       <>
                         <button className="btn-ghost" onClick={() => setEditingId(commande.id)}>Modifier</button>
                         <button className="btn-ghost" onClick={() => handlePasser(commande.id)}>Passer la commande</button>
                         <button className="btn-ghost" onClick={() => handleAnnuler(commande.id)}>Annuler</button>
                       </>
+                    )}
+                    {!readOnly && commande.etat !== 'brouillon' && commande.etat !== 'annulee' && commande.solde > 0 && (
+                      <button className="btn-ghost" onClick={() => setPayerFor(commande)}>Payer</button>
                     )}
                   </td>
                 </tr>
@@ -531,20 +598,27 @@ export function CommanderView() {
         </div>
       </div>
 
-      <Modal open={newOpen} onClose={() => setNewOpen(false)} title="Nouvelle commande" wide>
-        <CommandeForm
-          submitLabel="Enregistrer la commande"
-          onSubmit={async (payload) => {
-            const res = await fetch('/api/commandes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-            const json = await res.json()
-            if (!res.ok) return json.error ?? 'Une erreur est survenue.'
-            refresh()
-          }}
-        />
-      </Modal>
-      <Modal open={editingId !== null} onClose={() => setEditingId(null)} title="Modifier la commande" wide>
-        {editingId !== null && <EditCommandeModal commandeId={editingId} onClose={() => setEditingId(null)} onDone={refresh} />}
-      </Modal>
+      {!readOnly && (
+        <>
+          <Modal open={newOpen} onClose={() => setNewOpen(false)} title="Nouvelle commande" wide>
+            <CommandeForm
+              submitLabel="Enregistrer la commande"
+              onSubmit={async (payload) => {
+                const res = await fetch('/api/commandes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+                const json = await res.json()
+                if (!res.ok) return json.error ?? 'Une erreur est survenue.'
+                refresh()
+              }}
+            />
+          </Modal>
+          <Modal open={editingId !== null} onClose={() => setEditingId(null)} title="Modifier la commande" wide>
+            {editingId !== null && <EditCommandeModal commandeId={editingId} onClose={() => setEditingId(null)} onDone={refresh} />}
+          </Modal>
+          <Modal open={payerFor !== null} onClose={() => setPayerFor(null)} title={`Payer — ${payerFor?.numero ?? ''}`}>
+            {payerFor && <PayerFournisseurForm commandeId={payerFor.id} solde={payerFor.solde} devise={payerFor.devise} onDone={refresh} />}
+          </Modal>
+        </>
+      )}
     </AppShell>
   )
 }

@@ -15,6 +15,13 @@
       "when": 1795570833746,
       "tag": "0001_shiny_skrulls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795605473049,
+      "tag": "0002_massive_loa",
+      "breakpoints": true
     }
   ]
 }

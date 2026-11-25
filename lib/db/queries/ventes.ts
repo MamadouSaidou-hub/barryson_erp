@@ -82,6 +82,19 @@ export async function getCreancesList() {
     })
 }
 
+// Agrégat trésorerie (§ comptable) : montants GNF exacts, somme directe des totalPaye/solde déjà
+// calculés par ligne dans getCommandesClientsList — jamais mélangés avec les montants d'achat en
+// devise étrangère (cf. commentaire sur `gnf` dans schema.ts).
+export async function getTresorerieVentes() {
+  const rows = await getCommandesClientsList()
+  const retenues = rows.filter((row) => row.etat !== 'brouillon' && row.etat !== 'annulee')
+
+  const totalEncaisse = retenues.reduce((sum, row) => sum + row.totalPaye, 0)
+  const totalACaisser = retenues.filter((row) => row.solde > 0).reduce((sum, row) => sum + row.solde, 0)
+
+  return { totalEncaisse, totalACaisser }
+}
+
 export async function getCommandeClientDetail(id: number) {
   const [commande] = await db
     .select({

@@ -6,6 +6,7 @@ import { Modal } from '@/components/modal'
 import { fetchJson } from '@/lib/fetch-json'
 import { formatMoney } from '@/lib/format'
 import { EncaisserForm } from '@/components/ventes-view'
+import { authClient } from '@/lib/auth-client'
 
 type Creance = {
   id: number
@@ -103,6 +104,10 @@ function RelancerForm({ creance, onDone }: { creance: Creance; onDone: () => voi
 }
 
 export function CreancesView() {
+  const { data: session } = authClient.useSession()
+  const role = (session?.user as { role?: string })?.role
+  const readOnly = role === 'comptable'
+
   const [creances, setCreances] = useState<Creance[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -164,8 +169,8 @@ export function CreancesView() {
                   </td>
                   <td data-label="Solde" style={{ fontWeight: 700 }}>{formatMoney(creance.solde)}</td>
                   <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <button className="btn-ghost" onClick={() => setEncaisserFor(creance)}>Encaisser</button>
-                    <button className="btn-ghost" onClick={() => setRelancerFor(creance)}>Relancer</button>
+                    {!readOnly && <button className="btn-ghost" onClick={() => setEncaisserFor(creance)}>Encaisser</button>}
+                    {!readOnly && <button className="btn-ghost" onClick={() => setRelancerFor(creance)}>Relancer</button>}
                   </td>
                 </tr>
               ))}

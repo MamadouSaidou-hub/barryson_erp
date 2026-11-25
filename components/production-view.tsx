@@ -17,6 +17,7 @@ type Modele = {
   tubeArticleId: number
   cartonArticleId: number
   plastiqueArticleId: number | null
+  produitFiniArticleId: number
 }
 
 type ArticleOption = { id: number; name: string; unit: string }
@@ -54,9 +55,19 @@ type Fabrication = {
 const ETAT_LABELS: Record<Fabrication['etat'], string> = { ouverte: 'Ouverte', terminee: 'Terminée', annulee: 'Annulée' }
 const ETAT_BADGES: Record<Fabrication['etat'], string> = { ouverte: 'badge-blue', terminee: 'badge-green', annulee: 'badge-muted' }
 
-function NewFabricationForm({ modeles, onCreated }: { modeles: Modele[]; onCreated: () => void }) {
-  const [modeleId, setModeleId] = useState(modeles[0]?.id ?? 0)
-  const [metrageEngage, setMetrageEngage] = useState('')
+function NewFabricationForm({
+  modeles,
+  onCreated,
+  initialModeleId,
+  initialMetrage,
+}: {
+  modeles: Modele[]
+  onCreated: () => void
+  initialModeleId?: number
+  initialMetrage?: number
+}) {
+  const [modeleId, setModeleId] = useState(initialModeleId ?? modeles[0]?.id ?? 0)
+  const [metrageEngage, setMetrageEngage] = useState(initialMetrage ? String(initialMetrage) : '')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -216,6 +227,7 @@ export function ProductionView() {
   const [newOpen, setNewOpen] = useState(false)
   const [resultatFor, setResultatFor] = useState<Fabrication | null>(null)
   const [besoins, setBesoins] = useState<BesoinFabrication[]>([])
+  const [besoinPrefill, setBesoinPrefill] = useState<{ modeleId: number; metrage: number } | null>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -241,8 +253,41 @@ export function ProductionView() {
   function refresh() {
     setNewOpen(false)
     setResultatFor(null)
+    setBesoinPrefill(null)
     setRefreshKey((value) => value + 1)
   }
+
+  // Résout le(s) modèle(s) dont le produit fini correspond au besoin, et suggère un métrage
+  // couvrant le manque (arrondi au tour complet supérieur, cohérent avec calculerPrevision qui ne
+  // compte que les tours complets).
+  function modelesPourBesoin(besoin: BesoinFabrication) {
+    return modeles.filter((modele) => modele.produitFiniArticleId === besoin.articleId)
+  }
+
+  function handleLancerBesoin(besoin: BesoinFabrication, modele: Modele) {
+    const toursNecessaires = Math.ceil(besoin.manque / modele.piecesParTour)
+    setBesoinPrefill({ modeleId: modele.id, metrage: toursNecessaires * modele.longueurRouleauM })
+    setNewOpen(true)
+  }
+
+  // Rendement dans le temps (§ chef de production) : chaque fabrication reste isolée dans la
+  // grille ci-dessous — ce tableau regroupe les fabrications terminées par modèle pour repérer
+  // une dérive (dernier rendement vs moyenne), sans requête serveur supplémentaire.
+  const rendementParModele = (() => {
+    const parModele = new Map<string, Fabrication[]>()
+    for (const fabrication of fabrications) {
+      if (fabrication.etat !== 'terminee' || !fabrication.resultat) continue
+      const liste = parModele.get(fabrication.modeleNom) ?? []
+      liste.push(fabrication)
+      parModele.set(fabrication.modeleNom, liste)
+    }
+    return [...parModele.entries()].map(([modeleNom, liste]) => {
+      const triee = [...liste].sort((a, b) => (a.dateDebut < b.dateDebut ? -1 : 1))
+      const rendementMoyen = triee.reduce((sum, f) => sum + (f.resultat?.rendement ?? 0), 0) / triee.length
+      const dernierRendement = triee[triee.length - 1].resultat?.rendement ?? 0
+      return { modeleNom, nombre: triee.length, rendementMoyen, dernierRendement }
+    })
+  })()
 
   async function handleAnnuler(id: number) {
     if (!confirm('Annuler cette fabrication ? La bobine engagée sera restituée au stock.')) return
@@ -265,16 +310,50 @@ export function ProductionView() {
         <div className="table-panel" style={{ padding: 14, marginBottom: 16 }}>
           <p className="section-title">Besoins de fabrication</p>
           <p className="section-subtitle" style={{ marginBottom: 8 }}>Demande client non couverte par le stock actuel.</p>
-          {besoins.map((besoin) => (
-            <p key={besoin.articleId} style={{ margin: '4px 0' }}>
-              <strong>{besoin.articleName}</strong> : manque {besoin.manque} {besoin.unit} (demande {besoin.demandeRestante}, stock {besoin.stockDisponible})
-            </p>
-          ))}
+          {besoins.map((besoin) => {
+            const candidats = modelesPourBesoin(besoin)
+            return (
+              <p key={besoin.articleId} style={{ margin: '4px 0', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <span>
+                  <strong>{besoin.articleName}</strong> : manque {besoin.manque} {besoin.unit} (demande {besoin.demandeRestante}, stock {besoin.stockDisponible})
+                </span>
+                {candidats.length === 1 && (
+                  <button className="btn-ghost" onClick={() => handleLancerBesoin(besoin, candidats[0])}>Lancer la fabrication</button>
+                )}
+                {candidats.length > 1 && (
+                  <select onChange={(event) => { const modele = candidats.find((m) => m.id === Number(event.target.value)); if (modele) handleLancerBesoin(besoin, modele) }} defaultValue="">
+                    <option value="" disabled>Lancer avec…</option>
+                    {candidats.map((modele) => <option key={modele.id} value={modele.id}>{modele.name}</option>)}
+                  </select>
+                )}
+              </p>
+            )
+          })}
+        </div>
+      )}
+
+      {rendementParModele.length > 0 && (
+        <div className="table-panel" style={{ marginBottom: 16 }}>
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead><tr><th>Modèle</th><th>Fabrications terminées</th><th>Rendement moyen</th><th>Dernier rendement</th></tr></thead>
+              <tbody>
+                {rendementParModele.map((ligne) => (
+                  <tr key={ligne.modeleNom}>
+                    <td>{ligne.modeleNom}</td>
+                    <td>{ligne.nombre}</td>
+                    <td>{(ligne.rendementMoyen * 100).toFixed(1)} %</td>
+                    <td style={{ color: ligne.dernierRendement < ligne.rendementMoyen ? 'var(--red)' : 'var(--green)' }}>{(ligne.dernierRendement * 100).toFixed(1)} %</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
       <div className="toolbar-panel" style={{ justifyContent: 'flex-end' }}>
-        <button className="btn-primary" onClick={() => setNewOpen(true)}><Plus size={14} /> Nouvelle fabrication</button>
+        <button className="btn-primary" onClick={() => { setBesoinPrefill(null); setNewOpen(true) }}><Plus size={14} /> Nouvelle fabrication</button>
       </div>
 
       <div className="store-card-grid">
@@ -313,8 +392,8 @@ export function ProductionView() {
         ))}
       </div>
 
-      <Modal open={newOpen} onClose={() => setNewOpen(false)} title="Nouvelle fabrication">
-        <NewFabricationForm modeles={modeles} onCreated={refresh} />
+      <Modal open={newOpen} onClose={() => { setNewOpen(false); setBesoinPrefill(null) }} title="Nouvelle fabrication">
+        <NewFabricationForm modeles={modeles} onCreated={refresh} initialModeleId={besoinPrefill?.modeleId} initialMetrage={besoinPrefill?.metrage} />
       </Modal>
       <Modal open={resultatFor !== null} onClose={() => setResultatFor(null)} title={`Résultat — ${resultatFor?.numero ?? ''}`} wide>
         {resultatFor && <ResultatForm fabrication={resultatFor} articleOptions={articleOptions} onDone={refresh} />}

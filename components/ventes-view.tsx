@@ -6,6 +6,7 @@ import { AppShell } from '@/components/app-shell'
 import { Modal } from '@/components/modal'
 import { fetchJson } from '@/lib/fetch-json'
 import { formatMoney } from '@/lib/format'
+import { authClient } from '@/lib/auth-client'
 
 type CommandeRow = {
   id: number
@@ -306,6 +307,10 @@ export function EncaisserForm({ commandeId, solde, onDone }: { commandeId: numbe
 }
 
 export function VentesView() {
+  const { data: session } = authClient.useSession()
+  const role = (session?.user as { role?: string })?.role
+  const readOnly = role === 'comptable'
+
   const [commandes, setCommandes] = useState<CommandeRow[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -350,9 +355,11 @@ export function VentesView() {
           <h1>Commandes clients</h1>
         </div>
       </div>
-      <div className="toolbar-panel" style={{ justifyContent: 'flex-end' }}>
-        <button className="btn-primary" onClick={() => setNewOpen(true)}><Plus size={14} /> Nouvelle commande</button>
-      </div>
+      {!readOnly && (
+        <div className="toolbar-panel" style={{ justifyContent: 'flex-end' }}>
+          <button className="btn-primary" onClick={() => setNewOpen(true)}><Plus size={14} /> Nouvelle commande</button>
+        </div>
+      )}
       <div className="table-panel">
         <div className="table-scroll">
           <table className="data-table">
@@ -372,12 +379,12 @@ export function VentesView() {
                   </td>
                   <td><span className={`badge ${ETAT_BADGES[commande.etat]}`}>{ETAT_LABELS[commande.etat]}</span></td>
                   <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {commande.etat === 'brouillon' && <button className="btn-ghost" onClick={() => handleConfirmer(commande.id)}>Confirmer</button>}
-                    {commande.etat === 'brouillon' && <button className="btn-ghost" onClick={() => handleAnnuler(commande.id)}>Annuler</button>}
-                    {(commande.etat === 'confirmee' || commande.etat === 'partiellement_livree') && (
+                    {!readOnly && commande.etat === 'brouillon' && <button className="btn-ghost" onClick={() => handleConfirmer(commande.id)}>Confirmer</button>}
+                    {!readOnly && commande.etat === 'brouillon' && <button className="btn-ghost" onClick={() => handleAnnuler(commande.id)}>Annuler</button>}
+                    {!readOnly && (commande.etat === 'confirmee' || commande.etat === 'partiellement_livree') && (
                       <button className="btn-ghost" onClick={() => setLivrerFor(commande)}>Livrer</button>
                     )}
-                    {commande.solde > 0 && commande.etat !== 'brouillon' && commande.etat !== 'annulee' && (
+                    {!readOnly && commande.solde > 0 && commande.etat !== 'brouillon' && commande.etat !== 'annulee' && (
                       <button className="btn-ghost" onClick={() => setEncaisserFor(commande)}>Encaisser</button>
                     )}
                   </td>
@@ -388,23 +395,27 @@ export function VentesView() {
         </div>
       </div>
 
-      <Modal open={newOpen} onClose={() => setNewOpen(false)} title="Nouvelle commande client" wide>
-        <CommandeForm
-          submitLabel="Enregistrer la commande"
-          onSubmit={async (payload) => {
-            const res = await fetch('/api/ventes-commandes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-            const json = await res.json()
-            if (!res.ok) return json.error ?? 'Une erreur est survenue.'
-            refresh()
-          }}
-        />
-      </Modal>
-      <Modal open={livrerFor !== null} onClose={() => setLivrerFor(null)} title={`Livrer — ${livrerFor?.numero ?? ''}`} wide>
-        {livrerFor && <LivrerForm commandeId={livrerFor.id} onDone={refresh} />}
-      </Modal>
-      <Modal open={encaisserFor !== null} onClose={() => setEncaisserFor(null)} title={`Encaisser — ${encaisserFor?.numero ?? ''}`}>
-        {encaisserFor && <EncaisserForm commandeId={encaisserFor.id} solde={encaisserFor.solde} onDone={refresh} />}
-      </Modal>
+      {!readOnly && (
+        <>
+          <Modal open={newOpen} onClose={() => setNewOpen(false)} title="Nouvelle commande client" wide>
+            <CommandeForm
+              submitLabel="Enregistrer la commande"
+              onSubmit={async (payload) => {
+                const res = await fetch('/api/ventes-commandes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+                const json = await res.json()
+                if (!res.ok) return json.error ?? 'Une erreur est survenue.'
+                refresh()
+              }}
+            />
+          </Modal>
+          <Modal open={livrerFor !== null} onClose={() => setLivrerFor(null)} title={`Livrer — ${livrerFor?.numero ?? ''}`} wide>
+            {livrerFor && <LivrerForm commandeId={livrerFor.id} onDone={refresh} />}
+          </Modal>
+          <Modal open={encaisserFor !== null} onClose={() => setEncaisserFor(null)} title={`Encaisser — ${encaisserFor?.numero ?? ''}`}>
+            {encaisserFor && <EncaisserForm commandeId={encaisserFor.id} solde={encaisserFor.solde} onDone={refresh} />}
+          </Modal>
+        </>
+      )}
     </AppShell>
   )
 }

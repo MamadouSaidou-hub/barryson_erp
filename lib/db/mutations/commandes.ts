@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { db } from '../client'
-import { catalogueProduits, commandeLignes, commandes } from '../schema'
+import { catalogueProduits, commandeLignes, commandes, paiementsFournisseurs } from '../schema'
 import { finalNumero, placeholderNumero } from '../numero'
 import { writeAuditLog, type Actor } from './audit'
 
@@ -166,4 +166,19 @@ export async function annulerCommande(id: number, actor: Actor, reason?: string)
 export async function getCatalogueDefaults(catalogueProduitId: number) {
   const [row] = await db.select().from(catalogueProduits).where(eq(catalogueProduits.id, catalogueProduitId))
   return row ?? null
+}
+
+// Symétrique de enregistrerPaiementClient (lib/db/mutations/ventes.ts) : qui porte la commande
+// (resp_stock/dg/admin) saisit le paiement au fournisseur ; le comptable reste lecteur.
+export async function enregistrerPaiementFournisseur(commandeId: number, input: { montant: number; methode: string; date: string }) {
+  if (input.montant <= 0) throw new Error('Le montant doit être strictement positif.')
+
+  const [commande] = await db.select().from(commandes).where(eq(commandes.id, commandeId))
+  if (!commande) throw new Error('Commande introuvable.')
+
+  const [paiement] = await db
+    .insert(paiementsFournisseurs)
+    .values({ commandeId, montant: input.montant, methode: input.methode, date: input.date })
+    .returning()
+  return paiement
 }
